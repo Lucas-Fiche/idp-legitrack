@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Frontend - LegiTrack</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        button { margin: 5px; padding: 10px; }
+        pre { background-color: #eee; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Teste de API (Frontend)</h1>
+
+    <button onclick="carregarTemas()">1. Carregar Temas</button>
+    <button onclick="buscarProjetos()">2. Buscar Projetos (Filtro: Esporte e Lazer)</button>
+    <button onclick="buscarProjetosMultiplos()">3. Buscar Projetos (Filtro: Esporte e Lazer E Direito Penal)</button>
+    <button onclick="salvarInteresses()">4. Salvar Interesses (POST)</button>
+
+    <h3>Resultado:</h3>
+    <pre id="resultado">Clique em um botão para testar a API...</pre>
+
+    <script>
+        // Define a URL base do nosso backend
+        const API_URL = "http://127.0.0.1:5000";
+        
+        // Pega o elemento <pre> para mostrar os resultados
+        const output = document.getElementById("resultado");
+
+        // --- Função para a Rota GET /projetos/temas ---
+        async function carregarTemas() {
+            output.innerText = "Carregando temas...";
+            // O 'fetch' é o 'requests.get()' do JavaScript
+            const resposta = await fetch(API_URL + "/projetos/temas");
+            const dados = await resposta.json();
+            // JSON.stringify(dados, null, 2) formata o JSON para ficar legível
+            output.innerText = JSON.stringify(dados, null, 2);
+        }
+
+        // --- Função para a Rota GET /projetos (1 tema) ---
+        async function buscarProjetos() {
+            output.innerText = "Buscando projetos (tema=39)...";
+            const resposta = await fetch(API_URL + "/projetos?tema=39");
+            const dados = await resposta.json();
+            output.innerText = JSON.stringify(dados, null, 2);
+        }
+
+        // --- Função para a Rota GET /projetos (Múltiplos temas) ---
+        async function buscarProjetosMultiplos() {
+            output.innerText = "Buscando projetos (tema=39 & tema=43)...";
+            const url = API_URL + "/projetos?tema=39&tema=43";
+            const resposta = await fetch(url);
+            const dados = await resposta.json();
+            output.innerText = JSON.stringify(dados, null, 2);
+        }
+
+        // --- Função para a Rota POST /projetos/interesses ---
+        async function salvarInteresses() {
+            output.innerText = "Salvando interesses (POST)...";
+            
+            const dadosParaEnviar = {
+                "codigos": ["39", "43", "56"] // Esporte, D. Penal, Saúde
+            };
+
+            const resposta = await fetch(API_URL + "/projetos/interesses", {
+                method: "POST", // Especifica o método
+                headers: {
+                    "Content-Type": "application/json" // Avisa que estamos enviando JSON
+                },
+                body: JSON.stringify(dadosParaEnviar) // Converte o objeto JS em texto JSON
+            });
+            
+            const dados = await resposta.json();
+            output.innerText = JSON.stringify(dados, null, 2);
+        }
+    </script>
+</body>
+</html>

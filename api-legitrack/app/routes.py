@@ -1,0 +1,62 @@
+from flask import Blueprint, jsonify, request
+from flask_cors import CORS
+import requests
+
+bp = Blueprint('routes', __name__)
+
+CORS(bp)
+
+@bp.route("/projetos", methods=["GET"])
+def listar_projetos():
+
+    pagina = request.args.get("pagina", 1)
+    codigos_de_tema = request.args.getlist("tema")
+
+    url = f"https://dadosabertos.camara.leg.br/api/v2/proposicoes?pagina={pagina}"
+
+    for codigo in codigos_de_tema:
+        url += f"&codTema={codigo}"
+
+    resposta = requests.get(url)
+    return jsonify(resposta.json())
+
+@bp.route("/projetos/temas", methods=["GET"])
+def listar_temas_projetos():
+    url = "https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codTema"
+
+    resposta = requests.get(url)
+
+    dados = resposta.json()
+    lista_de_temas = dados.get('dados', [])
+
+    temas_formatados = []
+
+    for tema in lista_de_temas:
+        nome = tema.get('nome', 'Sem nome')
+        cod = tema.get('cod', 'Sem código')
+        texto = f"Nome: {nome} - Cod: {cod}"
+        temas_formatados.append(texto)
+
+    contagem = len(lista_de_temas)
+
+    resposta_final = {
+        "total_de_temas": contagem,
+        "temas": temas_formatados
+    }
+    return jsonify(resposta_final)
+
+@bp.route("/projeto/interesses", methods=["POST"])
+def salvar_interesses():
+    dados = request.get_json()
+
+    if not dados or 'codigos' not in dados:
+        return jsonify({"ERRO": "Nenhum código de tema foi enviado"}), 400
+    
+    codigos_selecionados = dados['codigos']
+
+    print(f"Interesses recebidos e salvos (simulação): {codigos_selecionados}")
+
+    return jsonify({
+        "mensagem": "Interesses salvos com sucesso",
+        "temas_selecionados": codigos_selecionados
+    }), 201
