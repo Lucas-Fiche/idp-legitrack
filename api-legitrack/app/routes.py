@@ -42,13 +42,25 @@ def detalhes_do_projeto(id):
             "descricao_situacao": dados_projeto.get("statusProposicao", {}).get("descricaoSituacao", "")         
         } 
     }
-
     return jsonify(resultado)
 
 # Buscar as tramitações de um projeto
 @bp.route("/projetos/tramitacoes/<int:id>", methods=["GET"])
 def tramitacoes(id):
-    return ""
+    url = f"https://dadosabertos.camara.leg.br/api/v2/proposicoes/{id}/tramitacoes"
+
+    resposta = requests.get(url)
+    dados_tramitacoes = resposta.json().get("dados", {})
+
+    resultado = [{
+        "data": tramitacao.get("dataHora")[:10],
+        "hora": tramitacao.get("dataHora")[-5:],
+        "situacao": tramitacao.get("descricaoSituacao"),
+        "tramitacao": tramitacao.get("descricaoTramitacao")
+    } for tramitacao in dados_tramitacoes
+    ]
+
+    return resultado
 
 @bp.route("/projetos/temas", methods=["GET"])
 def listar_temas_projetos():
