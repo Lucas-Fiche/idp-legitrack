@@ -1,4 +1,6 @@
-# Framework principal
+# -----------------------------------------------
+# Framework Principal (Flask)
+# -----------------------------------------------
 Flask==3.1.2
 Werkzeug==3.1.3
 Jinja2==3.1.6
@@ -6,22 +8,24 @@ itsdangerous==2.2.0
 click==8.3.0
 MarkupSafe==3.0.3
 blinker==1.9.0
+gunicorn 
 
-# Comunicação HTTP
-requests==2.32.5
+# -----------------------------------------------
+# Banco de Dados (PostgreSQL)
+# -----------------------------------------------
+Flask-SQLAlchemy 
+Flask-Migrate    
+psycopg2-binary  
+
+# -----------------------------------------------
+# Utilitários (HTTP, CORS, etc.)
+# -----------------------------------------------
+requests==2.32.5 
 urllib3==2.5.0
 idna==3.11
 charset-normalizer==3.4.4
 certifi==2025.10.5
 
-# CORS
 flask-cors==6.0.1
-
-# Servidor de produção
-gunicorn
-
-# Carregamento de variáveis de ambiente (.env)
-python-dotenv
-
-# Cache
-flask-caching
+python-dotenv 
+flask-caching  
