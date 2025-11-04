@@ -1,15 +1,13 @@
 from flask import Blueprint, jsonify, request, render_template
-from flask_cors import CORS
 import requests
 
 bp = Blueprint('routes', __name__)
-
-CORS(bp)
 
 @bp.route("/teste") 
 def teste():
     return render_template("index.html")
 
+# Busca por tema de um projeto
 @bp.route("/projetos", methods=["GET"])
 def listar_projetos():
 
@@ -32,14 +30,29 @@ def detalhes_do_projeto(id):
     resposta = requests.get(f"{url_base}{id}")
     dados_projeto = resposta.json().get('dados', {})
 
+    # Reune as informações do PL necessárias para formar a descrição
+    descricao_PL = {
+        "projeto": dados_projeto.get("siglaTipo"),
+        "ano_do_projeto": dados_projeto.get("ano"),
+        "numero_do_projeto": dados_projeto.get("numero")
+    }
+
+    # Formata as informações para que a descrição esteja no modelo correto
+    descricao_PL_formatada = f"{descricao_PL['projeto']} {descricao_PL['ano_do_projeto']}/{descricao_PL['numero_do_projeto']}"
+
     resultado = {
         "id": dados_projeto.get("id"),
         "informacoes": {
-            "titulo": dados_projeto.get("ementa")
+            "titulo": dados_projeto.get("ementa"),
+            "descricao": descricao_PL_formatada,
+            "ano_inicio": dados_projeto.get("ano")
         },
-        "status": {
+        "status_tramitacao_atual": {
             "descricao_tramitacao": dados_projeto.get("statusProposicao", {}).get("descricaoTramitacao", ""),
-            "descricao_situacao": dados_projeto.get("statusProposicao", {}).get("descricaoSituacao", "")         
+            "descricao_situacao": dados_projeto.get("statusProposicao", {}).get("descricaoSituacao", ""),
+            "sigla_orgao": dados_projeto.get("statusProposicao", {}).get("siglaOrgao", ""),
+            "data_hora": dados_projeto.get("statusProposicao", {}).get("dataHora", ""),
+            "despacho": dados_projeto.get("statusProposicao", {}).get("despacho", "")         
         } 
     }
 
@@ -50,6 +63,7 @@ def detalhes_do_projeto(id):
 def tramitacoes(id):
     return ""
 
+# Busca todos os temas existentes
 @bp.route("/projetos/temas", methods=["GET"])
 def listar_temas_projetos():
     url = "https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codTema"
@@ -75,6 +89,7 @@ def listar_temas_projetos():
     }
     return jsonify(resposta_final)
 
+# Salva o tema escolhido
 @bp.route("/projeto/interesses", methods=["POST"])
 def salvar_interesses():
     dados = request.get_json()
