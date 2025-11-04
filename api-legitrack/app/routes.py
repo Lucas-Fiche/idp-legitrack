@@ -1,10 +1,14 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 from flask_cors import CORS
 import requests
 
 bp = Blueprint('routes', __name__)
 
 CORS(bp)
+
+@bp.route("/teste") 
+def teste():
+    return render_template("index.html")
 
 @bp.route("/projetos", methods=["GET"])
 def listar_projetos():
@@ -19,6 +23,32 @@ def listar_projetos():
 
     resposta = requests.get(url)
     return jsonify(resposta.json())
+
+# Buscar por ID de um projeto
+@bp.route("/projetos/<int:id>", methods=["GET"])
+def detalhes_do_projeto(id):
+    url_base = "https://dadosabertos.camara.leg.br/api/v2/proposicoes/"
+
+    resposta = requests.get(f"{url_base}{id}")
+    dados_projeto = resposta.json().get('dados', {})
+
+    resultado = {
+        "id": dados_projeto.get("id"),
+        "informacoes": {
+            "titulo": dados_projeto.get("ementa")
+        },
+        "status": {
+            "descricao_tramitacao": dados_projeto.get("statusProposicao", {}).get("descricaoTramitacao", ""),
+            "descricao_situacao": dados_projeto.get("statusProposicao", {}).get("descricaoSituacao", "")         
+        } 
+    }
+
+    return jsonify(resultado)
+
+# Buscar as tramitações de um projeto
+@bp.route("/projetos/tramitacoes/<int:id>", methods=["GET"])
+def tramitacoes(id):
+    return ""
 
 @bp.route("/projetos/temas", methods=["GET"])
 def listar_temas_projetos():
