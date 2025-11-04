@@ -1,4 +1,5 @@
 services:
+  #Flask
   api:
     build: .
     ports:
@@ -13,4 +14,24 @@ services:
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://user:password@db:5432/legitrack_db
     command: flask run --host=0.0.0.0 --port=5000 --reload
+    depends_on:
+      - db
+
+  #PostgreSQL
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: legitrack_db
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
