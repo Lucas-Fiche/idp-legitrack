@@ -51,6 +51,7 @@ class RL_Tramitacoes(db.Model):
     id_rl_tramitacao = db.Column(db.Integer, primary_key=True)
     id_projeto = db.Column(db.Integer, db.ForeignKey('tb_projeto.id_projeto'), nullable=False)
     sequencia = db.Column(db.Integer, nullable=False)
+    data_hora = db.Column(db.DateTime, nullable=False)
     id_situacao = db.Column(db.Integer, db.ForeignKey('tp_situacao.id_situacao'), nullable=False)
     id_tramitacao = db.Column(db.Integer, db.ForeignKey('tp_tramitacao.id_tramitacao'), nullable=False)    
     
