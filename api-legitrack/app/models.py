@@ -4,17 +4,17 @@ from datetime import datetime
 #TP
 class TP_Situacao(db.Model):
     __tablename__ = 'tp_situacao'
-    id_situacao = db.Column(db.Integer, primary_key=True)
+    id_situacao = db.Column(db.Integer, primary_key=True, autoincrement=False)
     ds_situacao = db.Column(db.String(255), unique=True, nullable=False)
 
 class TP_Tramitacao(db.Model):
     __tablename__ = 'tp_tramitacao'
-    id_tramitacao = db.Column(db.Integer, primary_key=True)
+    id_tramitacao = db.Column(db.Integer, primary_key=True, autoincrement=False)
     ds_tramitacao = db.Column(db.String(255), unique=True, nullable=False)
 
 class TP_Temas(db.Model):
     __tablename__ = 'tp_temas'
-    id_tema = db.Column(db.Integer, primary_key=True)
+    id_tema = db.Column(db.Integer, primary_key=True, autoincrement=False)
     ds_tema = db.Column(db.String(255), unique=True, nullable=False)
 
 #RL
