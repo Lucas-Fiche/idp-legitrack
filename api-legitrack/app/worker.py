@@ -4,7 +4,7 @@ from datetime import datetime
 from . import create_app, db
 from .models import TP_Situacao, TP_Tramitacao, TP_Temas
 from sqlalchemy.exc import IntegrityError, OperationalError
-from sqlalchemy import text 
+from sqlalchemy import text
 
 app = create_app()
 app.app_context().push()
@@ -28,11 +28,12 @@ def wait_for_db():
             print(f"WORKER: Erro inesperado ao esperar pelo banco: {e}")
             retries += 1
             time.sleep(5)
+            
     print(f"WORKER: ERRO CRÍTICO! Não foi possível conectar ao banco após {max_retries} tentativas. Encerrando.")
     return False
 
 #Atualização e Adição de Metadados das Tabelas Tipo 
-def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name,):
+def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name, api_id_key, api_desc_key):
     tabela_nome = model_class.__tablename__
     print(f"WORKER: Iniciando sicronização da tabela '{tabela_nome}'...")
     
@@ -55,35 +56,31 @@ def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name,):
 
         #Comparação
         for item_api in dados_api:
-            if not isinstance(item_api, dict):
-                print("WORKER: Item da API malformado (não é um dicionário, talvez 'None'?). Pulando.")
-                continue
-
-            id_api_str = item_api.get('cod')
-            desc_api = item_api.get('nome')
-
-            if not id_api or not desc_api:
-                continue
-
             try:
+                id_api_str = item_api.get(api_id_key)
+                desc_api = item_api.get(api_desc_key)
+
+                if not id_api_str or not desc_api:
+                    continue
+
                 id_api = int(id_api_str)
-            except (ValueError, TypeError):
-                print(f"WORKER: ID da API inválido ou não-numérico: {id_api_str}. Pulando.")
-                continue
+                item_local = mapa_itens_locais.get(id_api) 
 
-            item_local = mapa_itens_locais.get(id_api)
-
-            if item_local: #Se já está no banco, atualiza se necessário
-                if getattr(item_local, ds_field_name) != desc_api:
+                if item_local: #Se já está no banco, atualiza se necessário
+                    if getattr(item_local, ds_field_name) != desc_api:
                         setattr(item_local, ds_field_name, desc_api)
                         itens_para_salvar.append(item_local)
                         itens_atualizados += 1
-            
-            else: #Se não está no banco, insere
-                novo_item_args = {id_field_name: id_api, ds_field_name: desc_api}
-                novo_item = model_class(**novo_item_args)
-                itens_para_salvar.append(novo_item)
-                itens_novos += 1
+
+                else:  #Se não está no banco, insere
+                    novo_item_args = {id_field_name: id_api, ds_field_name: desc_api}
+                    novo_item = model_class(**novo_item_args)
+                    itens_para_salvar.append(novo_item)
+                    itens_novos += 1
+
+            except (AttributeError, ValueError, TypeError) as e:
+                print(f"WORKER: [AVISO] ERRO em item individual (API enviou lixo? {item_api}). Erro: {e}. Pulando item.")
+                continue
 
         if itens_para_salvar:
             print(f"WORKER: {itens_novos} itens novos, {itens_atualizados} itens atualizados para '{tabela_nome}'. Salvando...")
@@ -93,14 +90,14 @@ def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name,):
                 print(f"WORKER: Sincronização de '{tabela_nome}' completa.")
             except Exception as e:
                 db.session.rollback()
-                print(f"WORKER: ERRO ao salvar no banco para '{tabela_nome}': {e}")
+                print(f"WORKER: [ERRO] ERRO ao salvar no banco para '{tabela_nome}': {e}")
         else:
             print(f"WORKER: Tabela '{tabela_nome}' já está atualizada.")
 
     except requests.exceptions.RequestException as e:
-        print(f"WORKER: ERRO DE REDE ao buscar '{tabela_nome}': {e}")
+        print(f"WORKER: [ERRO] ERRO DE REDE GERAL ao buscar '{tabela_nome}': {e}")
     except Exception as e:
-        print(f"WORKER: ERRO INESPERADO ao sicronizar '{tabela_nome}': {e}")
+        print(f"WORKER: [ERRO] ERRO INESPERADO (fora do loop) ao sicronizar '{tabela_nome}': {e}")
         db.session.rollback()
 
 #Loop do Worker
@@ -111,14 +108,16 @@ if __name__ == "__main__":
         exit(1)
 
     while True:
-        print(f"\nWORKER TP: {datetime.now()} - Iniciando novo ciclo de sincronização...")
-
+        print(f"\nWORKER (Metadata): {datetime.now()} - Iniciando novo ciclo de sincronização...")
+        
         #TP_Situacao
         sicronizar_tabelas_tp(
             url="https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codSituacao",
             model_class=TP_Situacao,
             id_field_name="id_situacao",
-            ds_field_name="ds_situacao"
+            ds_field_name="ds_situacao",
+            api_id_key="cod",
+            api_desc_key="nome"
         )
         print("-" * 20)
 
@@ -127,7 +126,9 @@ if __name__ == "__main__":
             url="https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codTipoTramitacao",
             model_class=TP_Tramitacao,
             id_field_name="id_tramitacao",
-            ds_field_name="ds_tramitacao"
+            ds_field_name="ds_tramitacao",
+            api_id_key="cod",
+            api_desc_key="nome"
         )
         print("-" * 20)
 
@@ -136,9 +137,10 @@ if __name__ == "__main__":
             url="https://dadosabertos.camara.leg.br/api/v2/referencias/proposicoes/codTema",
             model_class=TP_Temas,
             id_field_name="id_tema",
-            ds_field_name="ds_tema"
+            ds_field_name="ds_tema",
+            api_id_key="cod",
+            api_desc_key="nome"
         )
 
-        #Espera
         print(f"\nWORKER (Metadata): Ciclo completo. Dormindo por {TEMPO_DE_ESPERA / 60} minutos...")
         time.sleep(TEMPO_DE_ESPERA)
