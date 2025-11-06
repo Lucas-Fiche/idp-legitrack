@@ -1,6 +1,6 @@
 import time
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 from . import create_app, db
 from .models import TP_Situacao, TP_Tramitacao, TP_Temas, TB_Projeto, RL_Tramitacoes, rel_temas
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -101,23 +101,9 @@ def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name, api_id
         db.session.rollback()
 
 #Atualização e Adição de Projetos
-def sicronizar_projetos(tempo_de_espera):
+def sicronizar_projetos():
     todos_projetos = []
-
-    data_fim_dt = datetime.now()
-    minutos_atras = (tempo_de_espera/60) + 5
-    data_inicio_dt = data_fim_dt - timedelta(minutes=minutos_atras)
-
-    data_inicio_str = data_inicio_dt.strftime('%Y-%m-%d')
-    data_fim_str = data_fim_dt.strftime('%Y-%m-%d')
-
-    url = (
-        f"https://dadosabertos.camara.leg.br/api/v2/proposicoes"
-        f"?dataInicio={data_inicio_str}"
-        f"&dataFim={data_fim_str}"
-        f"&pagina=1&itens=100&ordem=ASC&ordenarPor=id"
-    )
-
+    url = 'https://dadosabertos.camara.leg.br/api/v2/proposicoes?pagina=1&itens=100&ordem=ASC&ordenarPor=id'
     print("WORKER (Projetos): Iniciando busca paginada de projetos alterados...")
 
     while url:
@@ -260,8 +246,6 @@ def sicronizar_projetos(tempo_de_espera):
 
 #Loop do Worker
 if __name__ == "__main__":
-    TEMPO_DE_ESPERA = 60 * 15 #15 minutos
-
     if not wait_for_db():
         exit(1)
 
@@ -301,7 +285,6 @@ if __name__ == "__main__":
         )
 
         #Projetos
-        sicronizar_projetos(TEMPO_DE_ESPERA)
+        sicronizar_projetos()
 
-        print(f"\nWORKER: Ciclo completo. Dormindo por {TEMPO_DE_ESPERA / 60} minutos...")
-        time.sleep(TEMPO_DE_ESPERA)
+        print(f"\nWORKER: Ciclo completo.")

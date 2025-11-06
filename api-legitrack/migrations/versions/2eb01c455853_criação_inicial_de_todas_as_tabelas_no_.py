@@ -1,8 +1,8 @@
-"""Cria tabelas no schema camara
+"""Criação inicial de todas as tabelas no schema camara
 
-Revision ID: bf78afa649a1
+Revision ID: 2eb01c455853
 Revises: 
-Create Date: 2025-11-06 00:25:29.019312
+Create Date: 2025-11-06 03:56:53.555521
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'bf78afa649a1'
+revision = '2eb01c455853'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -45,7 +45,7 @@ def upgrade():
     sa.Column('id_projeto', sa.Integer(), autoincrement=False, nullable=False),
     sa.Column('titulo_projeto', sa.String(length=500), nullable=True),
     sa.Column('descricao', sa.Text(), nullable=True),
-    sa.Column('ano_inicio', sa.Integer(), nullable=True),
+    sa.Column('ano_inicio', sa.String(length=4), nullable=True),
     sa.Column('data_hora', sa.DateTime(), nullable=True),
     sa.Column('sigla_orgao', sa.String(length=100), nullable=True),
     sa.Column('despacho', sa.Text(), nullable=True),
@@ -89,4 +89,5 @@ def downgrade():
     op.drop_table('tp_tramitacao', schema='camara')
     op.drop_table('tp_temas', schema='camara')
     op.drop_table('tp_situacao', schema='camara')
+    op.execute("DROP SCHEMA IF EXISTS camara CASCADE")
     # ### end Alembic commands ###
