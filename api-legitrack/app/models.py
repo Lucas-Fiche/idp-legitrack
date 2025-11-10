@@ -26,7 +26,7 @@ class TB_Projeto(db.Model):
     __table_args__ = {'schema': 'camara'}
     
     id_projeto = db.Column(db.Integer, primary_key=True, autoincrement=False)
-    titulo_projeto = db.Column(db.String(500))
+    titulo_projeto = db.Column(db.Text)
     descricao = db.Column(db.Text)
     ano_inicio = db.Column(db.String(4))
     data_hora = db.Column(db.DateTime)

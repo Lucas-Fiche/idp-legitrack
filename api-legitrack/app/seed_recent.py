@@ -10,6 +10,7 @@ from urllib.parse import urlparse, parse_qs
 app = create_app()
 app.app_context().push()
 
+#Espero o DB iniciar
 def wait_for_db():
     print("SEEDER: Aguardando o banco de dados ficar pronto...")
     retries = 0
@@ -32,6 +33,7 @@ def wait_for_db():
     print(f"SEEDER: ERRO CRÍTICO! Não foi possível conectar ao banco após {max_retries} tentativas. Encerrando.")
     return False
 
+#Atualização e Adição de Metadados das Tabelas Tipo 
 def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name, api_id_key, api_desc_key):
     tabela_nome = model_class.__tablename__
     print(f"SEEDER: Iniciando sicronização da tabela '{tabela_nome}'...")
@@ -45,7 +47,7 @@ def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name, api_id
             print(f"SEEDER: Nenhum dado recebido da API para '{tabela_nome}'. Pulando.")
             return
         
-        itens_locais = model_class.query.all()
+        itens_locais = db.session.scalars(db.select(model_class)).all()
         mapa_itens_locais = {getattr(item, id_field_name): item for item in itens_locais}
         print(f"SEEDER: {len(mapa_itens_locais)} itens existem localmente em '{tabela_nome}'.")
 
@@ -101,20 +103,75 @@ def sicronizar_tabelas_tp(url, model_class, id_field_name, ds_field_name, api_id
         print(f"SEEDER: [ERRO] ERRO INESPERADO (fora do loop) ao sicronizar '{tabela_nome}': {e}")
         db.session.rollback()
 
-def processar_pagina_de_projetos(projetos_desta_pagina):
-    """
-    Recebe uma lista de projetos (1 página) e salva
-    todos eles (Projeto, Tramitações, Temas) no banco.
-    """
+
+#Atualização e Adição de Projetos
+def sicronizar_projetos_por_ano(ano_selecionado):
+    todos_projetos = []
+    MAX_TENTATIVAS_POR_PAGINA = 3
+    
+    url = (
+        f"https://dadosabertos.camara.leg.br/api/v2/proposicoes"
+        f"?{ano_selecionado}"
+        f"&pagina=1&itens=100&ordem=ASC&ordenarPor=id"
+    )
+
+    print(f"SEEDER (Projetos): Iniciando BUSCA COMPLETA (Ano: {ano_selecionado}) de projetos...")
+
+    while url:
+        print(f"SEEDER (Projetos): Buscando página: {url}")
+        
+        resposta = None
+        for tentativa in range(MAX_TENTATIVAS_POR_PAGINA):
+            try:
+                resposta = requests.get(url, timeout=20)
+                resposta.raise_for_status()
+                break
+            except requests.exceptions.RequestException as e:
+                print(f"SEEDER (Projetos): [ERRO DE REDE] Tentativa {tentativa + 1}/{MAX_TENTATIVAS_POR_PAGINA} falhou: {e}.")
+                if tentativa < MAX_TENTATIVAS_POR_PAGINA - 1:
+                    time.sleep(5)
+                else:
+                    print(f"SEEDER (Projetos): [ERRO CRÍTICO] Falha ao buscar página: {e}. Abortando ciclo.")
+                    url = None
+        
+        if not url or not resposta:
+            break
+            
+        dados_api = resposta.json()
+        projetos_desta_pagina = dados_api.get('dados', [])
+        links_da_api = dados_api.get('links', [])
+
+        if not projetos_desta_pagina:
+            print("SEEDER (Projetos): Página sem dados. Concluindo busca.")
+            break
+
+        todos_projetos.extend(projetos_desta_pagina)
+
+        novo_url = None
+        for link in links_da_api:
+            if link.get('rel') == 'next':
+                novo_url = link.get('href')
+                break
+
+        url = novo_url
+        time.sleep(1)
+    
+    if not todos_projetos:
+        print("SEEDER (Projetos): Nenhum projeto encontrado para este período.")
+        return
+
+    print(f"SEEDER (Projetos): Paginação concluída. {len(todos_projetos)} projetos (do ano {ano_selecionado}) encontrados para checar/atualizar.")
+    
     projetos_atualizados = 0
     projetos_novos = 0
     novas_tramitacoes_total = 0
 
-    if not projetos_desta_pagina:
-        return 0, 0, 0
-
-    for projeto_resumido in projetos_desta_pagina:
+    for i, projeto_resumido in enumerate(todos_projetos):
         id_api = None
+        
+        if (i + 1) % 100 == 0:
+            print(f"SEEDER (Projetos): Processando... {i+1} / {len(todos_projetos)}")
+
         try:
             id_api_str = projeto_resumido.get('id')
             if not id_api_str:
@@ -186,6 +243,7 @@ def processar_pagina_de_projetos(projetos_desta_pagina):
 
             if projeto_temas_api:
                 temas_existentes_ids = {tema.id_tema for tema in projeto_db.temas}
+                
                 for tema_api in projeto_temas_api:
                     try:
                         if not isinstance(tema_api, dict):
@@ -207,32 +265,12 @@ def processar_pagina_de_projetos(projetos_desta_pagina):
             print(f"SEEDER (Projetos): [ERRO CRÍTICO] Falha ao processar projeto {id_api}: {e}")
             db.session.rollback()
 
-    return projetos_novos, projetos_atualizados, novas_tramitacoes_total
+    print(f"\n" + "="*30 + " ESTATÍSTICAS FINAIS " + "="*30)
+    print(f"Projetos Novos: {projetos_novos}")
+    print(f"Projetos Atualizados: {projetos_atualizados}")
+    print(f"Tramitações Adicionadas: {novas_tramitacoes_total}")
 
-def get_total_pages():
-    """
-    Faz uma chamada à API para descobrir o número total de páginas
-    no endpoint de "Full Sync".
-    """
-    try:
-        url = 'https://dadosabertos.camara.leg.br/api/v2/proposicoes?pagina=1&itens=1&ordem=ASC&ordenarPor=id'
-        print(f"SEEDER: Verificando número total de páginas em: {url}")
-        
-        resposta = requests.get(url, timeout=10)
-        resposta.raise_for_status()
-        links_da_api = resposta.json().get('links', [])
-        
-        for link in links_da_api:
-            if link.get('rel') == 'last':
-                last_link_href = link.get('href')
-                query_params = parse_qs(urlparse(last_link_href).query)
-                total_paginas = int(query_params['pagina'][0])
-                return total_paginas
-                
-    except Exception as e:
-        print(f"SEEDER: [ERRO CRÍTICO] Não foi possível obter o total de páginas: {e}")
-        return None
-
+#Loop do Worker
 if __name__ == "__main__":
     
     if not wait_for_db():
@@ -259,63 +297,26 @@ if __name__ == "__main__":
         api_id_key="cod", api_desc_key="nome"
     )
     
-    print("\n" + "="*30 + " FASE 2: PROJETOS (INTERATIVO) " + "="*30)
+    print("\n" + "="*30 + " FASE 2: PROJETOS (POR ANO) " + "="*30)
     
-    total_paginas = get_total_pages()
-    
-    if total_paginas:
-        print(f"SEEDER: A API reportou um total de {total_paginas} páginas (de 100 itens).")
+    try:
+        ano_atual = datetime.now().year
+        ano_input = input(f"Digite o(s) ano(s) que deseja carregar (ex: 2023, ou 2023,2022,2021): ")
         
-        try:
-            pagina_inicio = int(input(f"Qual página você quer COMEÇAR (ex: 1)? "))
-            pagina_fim = int(input(f"Qual página você quer TERMINAR (ex: {total_paginas})? "))
+        if not ano_input:
+            print("Nenhum ano fornecido. Encerrando.")
+            exit(0)
             
-            if pagina_fim > total_paginas:
-                pagina_fim = total_paginas
-            if pagina_inicio < 1:
-                pagina_inicio = 1
+        print(f"\nSEEDER: Ok! Processando ano(s): {ano_input}...")
+        
+        # Cria a string de query ?ano=2023&ano=2022
+        anos_para_buscar = "&".join([f"ano={ano.strip()}" for ano in ano_input.split(',')])
+        
+        sicronizar_projetos_por_ano(anos_para_buscar)
+        
+    except ValueError:
+        print("SEEDER: [ERRO] Entrada inválida.")
+    except KeyboardInterrupt:
+        print("\nSEEDER: Carga interrompida pelo usuário.")
             
-            print(f"\nSEEDER: Ok! Processando da página {pagina_inicio} até a página {pagina_fim}...")
-            
-            total_projetos_novos = 0
-            total_projetos_atualizados = 0
-            total_tramitacoes_novas = 0
-            
-            for pagina_atual in range(pagina_inicio, pagina_fim + 1):
-                url = f"https://dadosabertos.camara.leg.br/api/v2/proposicoes?pagina={pagina_atual}&itens=100&ordem=ASC&ordenarPor=id"
-                print(f"\n--- Processando Página {pagina_atual} / {pagina_fim} ---")
-                
-                try:
-                    resposta = requests.get(url, timeout=20)
-                    resposta.raise_for_status()
-                    projetos_da_pagina = resposta.json().get('dados', [])
-                    
-                    if not projetos_da_pagina:
-                        print(f"SEEDER: Página {pagina_atual} não retornou dados. Pulando.")
-                        continue
-
-                    pn, pa, tn = processar_pagina_de_projetos(projetos_da_pagina)
-                    
-                    print(f"SEEDER: Página {pagina_atual} concluída. ({pn} novos, {pa} atualizados, {tn} tramitações)")
-                    total_projetos_novos += pn
-                    total_projetos_atualizados += pa
-                    total_tramitacoes_novas += tn
-                    
-                    time.sleep(1)
-                
-                except requests.exceptions.RequestException as e:
-                    print(f"SEEDER: [ERRO DE REDE] Falha ao buscar página {pagina_atual}: {e}. Pulando esta página.")
-                    continue
-            
-            print("\n" + "="*30 + " ESTATÍSTICAS DO LOTE " + "="*30)
-            print(f"Páginas processadas: {pagina_fim - pagina_inicio + 1}")
-            print(f"Projetos Novos: {total_projetos_novos}")
-            print(f"Projetos Atualizados: {total_projetos_atualizados}")
-            print(f"Tramitações Adicionadas: {total_tramitacoes_novas}")
-            
-        except ValueError:
-            print("SEEDER: [ERRO] Entrada inválida. Por favor, digite apenas números.")
-        except KeyboardInterrupt:
-            print("\nSEEDER: Carga interrompida pelo usuário.")
-            
-    print(f"\n--- [SEED SCRIPT]: CARGA PARCIAL CONCLUÍDA ---")
+    print(f"\n--- [SEED SCRIPT]: CARGA CONCLUÍDA ---")
