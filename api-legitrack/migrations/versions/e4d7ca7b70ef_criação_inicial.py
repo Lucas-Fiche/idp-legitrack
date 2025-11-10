@@ -1,8 +1,8 @@
-"""Cria tabelas nos schemas
+"""Criação inicial
 
-Revision ID: 2ddccaad1eda
+Revision ID: e4d7ca7b70ef
 Revises: 
-Create Date: 2025-11-06 12:22:24.015221
+Create Date: 2025-11-10 11:35:07.850529
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '2ddccaad1eda'
+revision = 'e4d7ca7b70ef'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -41,7 +41,7 @@ def upgrade():
     )
     op.create_table('tb_projeto',
     sa.Column('id_projeto', sa.Integer(), autoincrement=False, nullable=False),
-    sa.Column('titulo_projeto', sa.String(length=500), nullable=True),
+    sa.Column('titulo_projeto', sa.Text(), nullable=True),
     sa.Column('descricao', sa.Text(), nullable=True),
     sa.Column('ano_inicio', sa.String(length=4), nullable=True),
     sa.Column('data_hora', sa.DateTime(), nullable=True),
