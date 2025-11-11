@@ -1,6 +1,8 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from flask_cors import CORS
-from .routes import bp
 import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -17,6 +19,8 @@ def create_app():
     CORS(app)
     db.init_app(app)          
     migrate.init_app(app, db)
+
+    from .routes import bp
 
     # Importar e registrar rotas aqui
     app.register_blueprint(bp)
