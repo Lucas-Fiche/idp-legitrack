@@ -20,6 +20,24 @@
     <h3>Resultado:</h3>
     <pre id="resultado">Clique em um botão para testar a API...</pre>
 
+    <h2>Criar Usuário</h2>
+    <form id="registerForm">
+    <input name="username" placeholder="Usuário" required />
+    <input name="email" type="email" placeholder="E-mail" required />
+    <input name="password" type="password" placeholder="Senha" required />
+    <button type="submit">Registrar</button>
+    </form>
+    <div id="registerResult"></div>
+
+    <!-- Formulário de Login -->
+    <h2>Login</h2>
+    <form id="loginForm">
+    <input name="email" type="email" placeholder="E-mail" required />
+    <input name="password" type="password" placeholder="Senha" required />
+    <button type="submit">Login</button>
+    </form>
+    <div id="loginResult"></div>
+
     <script>
         // Define a URL base do nosso backend
         const API_URL = "http://127.0.0.1:5000";
@@ -72,6 +90,44 @@
             
             const dados = await resposta.json();
             output.innerText = JSON.stringify(dados, null, 2);
+        }
+        // Cadastro
+        if(document.getElementById('registerForm')) {
+        document.getElementById('registerForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+            username: form.username.value,
+            email: form.email.value,
+            password: form.password.value
+            };
+            const res = await fetch('/registrar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            document.getElementById('registerResult').innerText = JSON.stringify(result);
+        }
+        }
+
+        // Login
+        if(document.getElementById('loginForm')) {
+        document.getElementById('loginForm').onsubmit = async function(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+            email: form.email.value,
+            password: form.password.value
+            };
+            const res = await fetch('/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            document.getElementById('loginResult').innerText = JSON.stringify(result);
+        }
         }
     </script>
 </body>

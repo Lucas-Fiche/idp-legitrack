@@ -8,3 +8,5 @@ with engine.connect() as conn:
         print('Schema camara criado!')
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS senado"))
         print('Schema senado criado!')
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS usuarios"))
+        print('Schema usuarios criado!')

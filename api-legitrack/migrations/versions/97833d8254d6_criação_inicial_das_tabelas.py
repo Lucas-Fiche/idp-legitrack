@@ -1,8 +1,8 @@
-"""Criação inicial
+"""Criação inicial das tabelas
 
-Revision ID: e4d7ca7b70ef
+Revision ID: 97833d8254d6
 Revises: 
-Create Date: 2025-11-10 11:35:07.850529
+Create Date: 2025-11-12 12:23:32.418390
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'e4d7ca7b70ef'
+revision = '97833d8254d6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -38,6 +38,17 @@ def upgrade():
     sa.PrimaryKeyConstraint('id_tramitacao'),
     sa.UniqueConstraint('ds_tramitacao'),
     schema='camara'
+    )
+    op.create_table('users',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('username', sa.String(length=150), nullable=False),
+    sa.Column('email', sa.String(length=150), nullable=False),
+    sa.Column('password_hash', sa.String(length=256), nullable=False),
+    sa.Column('criado_em', sa.DateTime(), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('username'),
+    schema='usuarios'
     )
     op.create_table('tb_projeto',
     sa.Column('id_projeto', sa.Integer(), autoincrement=False, nullable=False),
@@ -84,6 +95,7 @@ def downgrade():
     op.drop_table('rl_tramitacoes', schema='camara')
     op.drop_table('rl_temas', schema='camara')
     op.drop_table('tb_projeto', schema='camara')
+    op.drop_table('users', schema='usuarios')
     op.drop_table('tp_tramitacao', schema='camara')
     op.drop_table('tp_temas', schema='camara')
     op.drop_table('tp_situacao', schema='camara')
