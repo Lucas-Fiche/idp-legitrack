@@ -2,10 +2,7 @@ from flask import Blueprint, jsonify, request, render_template
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
-<<<<<<< HEAD
 from .models import TB_Projeto, TP_Situacao, RL_Tramitacoes, TP_Temas
-=======
->>>>>>> origin/main
 
 bp = Blueprint('routes', __name__)
 
@@ -61,8 +58,6 @@ def login():
 '''
 =================== Rotas para interações com a API da Câmara ===================
 '''
-
-<<<<<<< HEAD
 @bp.route("/projetos_iniciais", methods=["POST"])
 def projetos_iniciais():
     dados = request.get_json()
@@ -137,9 +132,6 @@ def interesses_user(id_user):
 
 '''
 =========================== OLD ===========================
-
-=======
->>>>>>> origin/main
 # Busca por tema de um projeto
 @bp.route("/projetos", methods=["GET"])
 def listar_projetos():
