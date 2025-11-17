@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request, render_template
 import requests
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import db
-from .models import TB_Projeto, TP_Situacao, RL_Tramitacoes, TP_Temas
+from .models import TB_Projeto, TP_Situacao, RL_Tramitacoes, TP_Temas, TB_Interesses, TB_User
 
 bp = Blueprint('routes', __name__)
 
@@ -115,20 +115,65 @@ def interesses():
             "ds_tema": tema.ds_tema
         })
 
-    return interesses
+    return jsonify(interesses)
 
 #Puxa Temas do Usuário e Manda Temas do Usuário
-@bp.route("/interesses/<id_user>", methods=["GET", "POST"])
+@bp.route("/interesses/<int:id_user>", methods=["GET", "POST"])
 def interesses_user(id_user):
-    temas = db.session.scalars(TP_Temas).all()
-    interesses = []
-    for tema in temas:
-        interesses.append({
-            "id_tema": tema.id_tema,
-            "ds_tema": tema.ds_tema
-        })
+    usuario = db.session.get(TB_User, id_user)
 
-    return interesses
+    if not usuario:
+        return jsonify({"erro": "Usuário não encontrado"}), 404
+
+    # --- GET ---
+    if request.method == "GET":
+        interesses = usuario.interesses
+        resposta = []
+        for interesse in interesses:
+            resposta.append({
+                "id_tema": interesse.tema.id_tema,
+                "ds_tema": interesse.tema.ds_tema
+            })
+        return jsonify(resposta)
+
+    # --- POST ---
+    if request.method == "POST":
+        dados = request.get_json()
+
+        if not dados or 'ids_temas' not in dados:
+            return jsonify({"erro": "Corpo da requisição inválido. Esperando por 'ids_temas'."}), 400
+
+        temas = dados.get('ids_temas')
+
+        if not isinstance(temas, list):
+            return jsonify({"erro": "'ids_temas' deve ser uma lista."}), 400
+        
+        ids_existentes = {i.id_interesse for i in usuario.interesses}
+        adicionados = []
+
+        try:
+            for id_tema in temas:
+                if id_tema not in ids_existentes:
+                    novo_interesse = TB_Interesses(user=usuario, id_interesse=id_tema)
+                    db.session.add(novo_interesse)
+                    adicionados.append(id_tema)
+                    ids_existentes.add(id_tema)
+
+            if adicionados:
+                db.session.commit()
+                mensagem = "Novos interesses salvos com sucesso!"
+            else:
+                mensagem = "Nenhum interesse novo para adicionar (usuário já seguia todos)."
+            
+            return jsonify({
+                "mensagem": mensagem,
+                "ids_adicionados": adicionados
+            }), 201
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Erro no servidor: {e}")
+            return jsonify({"erro": "Erro interno ao salvar interesses."}), 500
 
 '''
 =========================== OLD ===========================

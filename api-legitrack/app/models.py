@@ -66,8 +66,8 @@ rel_temas = db.Table('rl_temas',
 
 #Usuário
 
-class User(db.Model):
-    __tablename__ = 'users'
+class TB_User(db.Model):
+    __tablename__ = 'tb_users'
     __table_args__ = {'schema': 'usuarios'}
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
@@ -80,3 +80,26 @@ class User(db.Model):
     
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+class TB_Interesses(db.Model):
+    __tablename__ = 'tb_interesses'
+    __table_args__ = (db.UniqueConstraint('id_user', 'id_interesse', name='uq_user_interesse'), {'schema': 'usuarios'})
+    id = db.Column(db.Integer, primary_key=True)
+    id_user = db.Column(db.Integer, db.ForeignKey('usuarios.tb_users.id'), nullable=False)
+    id_interesse = db.Column(db.Integer, db.ForeignKey('camara.tp_temas.id_tema'), nullable=False)
+
+    # Isso permite fazer: interesse.tema.ds_tema ou usuario.interesses
+    user = db.relationship('TB_User', backref=db.backref('interesses', lazy='dynamic'))
+    tema = db.relationship('TP_Temas')
+
+class RL_Favoritos(db.Model):
+    __tablename__ = 'rl_favoritos'
+    __table_args__ = (db.UniqueConstraint('id_user', 'id_projeto', name='uq_user_projeto_favorito'), {'schema': 'usuarios'})
+    id = db.Column(db.Integer, primary_key=True)
+    id_user = db.Column(db.Integer, db.ForeignKey('usuarios.tb_users.id'), nullable=False)
+    id_projeto = db.Column(db.Integer, db.ForeignKey('camara.tb_projeto.id_projeto'), nullable=False)
+
+    # Permite acessar: favorito.projeto.titulo_projeto
+    projeto = db.relationship('TB_Projeto')
+    # Permite acessar: usuario.meus_favoritos
+    user = db.relationship('TB_User', backref=db.backref('meus_favoritos', lazy='dynamic'))
